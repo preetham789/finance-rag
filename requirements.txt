@@ -1,0 +1,35 @@
+# Core LLM + RAG
+langchain==0.3.7
+langchain-community==0.3.7
+langchain-openai==0.2.6
+langchain-experimental==0.3.3
+openai==1.54.0
+httpx==0.27.2          # OpenAI 1.54.x breaks against httpx 0.28+ default client init
+
+# Vector store
+chromadb==0.5.18
+posthog<6              # newer posthog releases break Chroma telemetry's capture() call shape
+
+# Embeddings (local, free)
+sentence-transformers==3.3.0
+
+# Document parsing
+pymupdf==1.24.13        # PDF parsing
+beautifulsoup4==4.12.3  # Web scraping
+requests==2.32.3
+arxiv==2.1.3            # arXiv API client (if using ML papers)
+
+# Evaluation
+ragas==0.2.5
+mlflow==2.18.0
+
+# API + UI (Phase 6, install now so no surprises later)
+fastapi==0.115.4
+uvicorn==0.32.0
+streamlit==1.40.1
+
+# Utilities
+python-dotenv==1.0.1
+pydantic==2.9.2
+pandas==2.2.3
+tqdm==4.67.0

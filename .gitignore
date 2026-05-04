@@ -1,0 +1,24 @@
+# CRITICAL — API keys must never be committed
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+*.egg-info/
+
+# Data (raw files are too large for git)
+data/raw/
+data/processed/
+
+# Experiment artifacts
+experiments/
+*.db
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
