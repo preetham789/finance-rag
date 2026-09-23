@@ -1,0 +1,132 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M2 2 L10 6 L2 10" fill="none" stroke="#334155" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#0f172a" flood-opacity="0.10"/>
+    </filter>
+    <style>
+      .bg { fill: #f8fafc; }
+      .title { font: 800 58px "Segoe UI", Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 400 26px "Segoe UI", Arial, sans-serif; fill: #475569; }
+      .card { fill: #ffffff; stroke: #d8e0ea; stroke-width: 2; filter: url(#softShadow); }
+      .card-title { font: 700 26px "Segoe UI", Arial, sans-serif; fill: #0f172a; }
+      .card-text { font: 400 18px "Segoe UI", Arial, sans-serif; fill: #475569; }
+      .pill { font: 700 16px "Segoe UI", Arial, sans-serif; fill: #ffffff; }
+      .metric { font: 800 30px "Segoe UI", Arial, sans-serif; fill: #0f172a; }
+      .metric-label { font: 500 15px "Segoe UI", Arial, sans-serif; fill: #64748b; }
+      .footer { font: 500 20px "Segoe UI", Arial, sans-serif; fill: #334155; }
+      .small { font: 600 14px "Segoe UI", Arial, sans-serif; fill: #64748b; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1600" height="900"/>
+  <rect x="0" y="0" width="1600" height="12" fill="#2563eb"/>
+  <rect x="0" y="12" width="1600" height="8" fill="#059669"/>
+
+  <text class="title" x="88" y="104">Finance RAG System Architecture</text>
+  <text class="subtitle" x="92" y="148">From Indian financial PDFs to grounded answers with page-level citations</text>
+
+  <g transform="translate(96,212)">
+    <rect class="card" x="0" y="0" width="260" height="170" rx="18"/>
+    <rect x="24" y="24" width="68" height="32" rx="16" fill="#2563eb"/>
+    <text class="pill" x="41" y="46">INPUT</text>
+    <text class="card-title" x="24" y="88">Financial PDFs</text>
+    <text class="card-text" x="24" y="122">Annual reports</text>
+    <text class="card-text" x="24" y="150">RBI publications</text>
+  </g>
+
+  <line x1="372" y1="297" x2="466" y2="297" stroke="#334155" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <g transform="translate(482,212)">
+    <rect class="card" x="0" y="0" width="260" height="170" rx="18"/>
+    <rect x="24" y="24" width="92" height="32" rx="16" fill="#d97706"/>
+    <text class="pill" x="39" y="46">PARSE</text>
+    <text class="card-title" x="24" y="88">Clean Text</text>
+    <text class="card-text" x="24" y="122">PyMuPDF extraction</text>
+    <text class="card-text" x="24" y="150">Tables + metadata</text>
+  </g>
+
+  <line x1="758" y1="297" x2="852" y2="297" stroke="#334155" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <g transform="translate(868,212)">
+    <rect class="card" x="0" y="0" width="260" height="170" rx="18"/>
+    <rect x="24" y="24" width="88" height="32" rx="16" fill="#7c3aed"/>
+    <text class="pill" x="43" y="46">EMBED</text>
+    <text class="card-title" x="24" y="88">Chunks</text>
+    <text class="card-text" x="24" y="122">Recursive splitting</text>
+    <text class="card-text" x="24" y="150">BGE embeddings</text>
+  </g>
+
+  <line x1="1144" y1="297" x2="1238" y2="297" stroke="#334155" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <g transform="translate(1254,212)">
+    <rect class="card" x="0" y="0" width="260" height="170" rx="18"/>
+    <rect x="24" y="24" width="84" height="32" rx="16" fill="#059669"/>
+    <text class="pill" x="42" y="46">STORE</text>
+    <text class="card-title" x="24" y="88">ChromaDB</text>
+    <text class="card-text" x="24" y="122">Persistent vectors</text>
+    <text class="card-text" x="24" y="150">HNSW + cosine</text>
+  </g>
+
+  <path d="M1384 388 C1384 480 1180 470 1180 540" fill="none" stroke="#334155" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <g transform="translate(930,540)">
+    <rect class="card" x="0" y="0" width="320" height="185" rx="18"/>
+    <rect x="24" y="24" width="112" height="32" rx="16" fill="#e11d48"/>
+    <text class="pill" x="42" y="46">RETRIEVE</text>
+    <text class="card-title" x="24" y="90">Hybrid Search</text>
+    <text class="card-text" x="24" y="126">70% dense vector search</text>
+    <text class="card-text" x="24" y="154">30% BM25 keyword match</text>
+  </g>
+
+  <line x1="914" y1="632" x2="790" y2="632" stroke="#334155" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <g transform="translate(500,540)">
+    <rect class="card" x="0" y="0" width="274" height="185" rx="18"/>
+    <rect x="24" y="24" width="72" height="32" rx="16" fill="#2563eb"/>
+    <text class="pill" x="42" y="46">LLM</text>
+    <text class="card-title" x="24" y="90">Grounded Answer</text>
+    <text class="card-text" x="24" y="126">Strict context prompt</text>
+    <text class="card-text" x="24" y="154">Inline source citations</text>
+  </g>
+
+  <line x1="484" y1="632" x2="360" y2="632" stroke="#334155" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <g transform="translate(88,540)">
+    <rect class="card" x="0" y="0" width="256" height="185" rx="18"/>
+    <rect x="24" y="24" width="76" height="32" rx="16" fill="#0f766e"/>
+    <text class="pill" x="42" y="46">APP</text>
+    <text class="card-title" x="24" y="90">API + Chat UI</text>
+    <text class="card-text" x="24" y="126">FastAPI backend</text>
+    <text class="card-text" x="24" y="154">Streamlit frontend</text>
+  </g>
+
+  <g transform="translate(88,780)">
+    <rect x="0" y="0" width="1424" height="72" rx="18" fill="#ffffff" stroke="#d8e0ea" stroke-width="2"/>
+    <g transform="translate(32,15)">
+      <text class="metric" x="0" y="28">50</text>
+      <text class="metric-label" x="54" y="27">documents</text>
+    </g>
+    <g transform="translate(270,15)">
+      <text class="metric" x="0" y="28">9,155</text>
+      <text class="metric-label" x="104" y="27">pages processed</text>
+    </g>
+    <g transform="translate(590,15)">
+      <text class="metric" x="0" y="28">33k+</text>
+      <text class="metric-label" x="92" y="27">chunks</text>
+    </g>
+    <g transform="translate(820,15)">
+      <text class="metric" x="0" y="28">15/15</text>
+      <text class="metric-label" x="96" y="27">evaluation answers</text>
+    </g>
+    <g transform="translate(1168,15)">
+      <text class="metric" x="0" y="28">0.822</text>
+      <text class="metric-label" x="104" y="27">avg relevance</text>
+    </g>
+  </g>
+
+  <text class="footer" x="96" y="865">GitHub: github.com/preetham789/finance-rag</text>
+  <text class="small" x="1288" y="865">Architecture visual for LinkedIn</text>
+</svg>

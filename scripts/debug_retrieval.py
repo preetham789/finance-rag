@@ -1,6 +1,13 @@
 # scripts/debug_retrieval.py
+"""
+Diagnostic tool — run direct ChromaDB queries to debug retrieval.
+
+Usage:
+  python scripts\\debug_retrieval.py
+"""
 import sys
 from pathlib import Path
+
 sys.path.append(str(Path(__file__).parent.parent))
 
 import chromadb
@@ -8,38 +15,35 @@ from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
 from src.config import CHROMA_DIR
 
-client = chromadb.PersistentClient(
-    path=str(CHROMA_DIR),
-    settings=Settings(anonymized_telemetry=False),
-)
-collection = client.get_or_create_collection("finance_rag")
-print(f"Vectors in store: {collection.count()}\n")
 
-model = SentenceTransformer("BAAI/bge-small-en-v1.5")
-
-def embed(text: str) -> list:
+def make_embed_fn(model: SentenceTransformer):
     """
     Returns a flat list of floats — exactly what ChromaDB expects.
+
     The bug was: model.encode([text]).tolist() → shape (1,384) → [[...]]
     ChromaDB query_embeddings wants [[...]] but was getting [[[...]]]
     Fix: encode a plain string (not a list) → shape (384,) → [...]
     Then wrap in a list at query time: query_embeddings=[[...]]
     """
-    vec = model.encode(
-        text,                       # ← plain string, not [text]
-        normalize_embeddings=True,
-    )
-    return vec.tolist()             # → flat list of 384 floats
+    def embed(text: str) -> list:
+        vec = model.encode(
+            text,                       # ← plain string, not [text]
+            normalize_embeddings=True,
+        )
+        return vec.tolist()             # → flat list of 384 floats
+    return embed
 
-def debug_query(query_text: str, where_filter: dict = None, n: int = 4):
+
+def debug_query(collection, embed_fn, query_text: str,
+                where_filter: dict = None, n: int = 4):
     print("=" * 65)
     print(f"QUERY: '{query_text}'")
     if where_filter:
         print(f"FILTER: {where_filter}")
     print("=" * 65)
 
-    prefixed = f"Represent this query for searching relevant passages: {query_text}"
-    embedding = embed(prefixed)     # flat list [float, float, ...]
+    prefixed  = f"Represent this query for searching relevant passages: {query_text}"
+    embedding = embed_fn(prefixed)
 
     kwargs = {
         "query_embeddings": [embedding],   # ChromaDB wants [[...]]
@@ -68,20 +72,34 @@ def debug_query(query_text: str, where_filter: dict = None, n: int = 4):
         print(f"\n[Chunk {i}]  Company={meta.get('company')}  "
               f"Page={meta.get('page_number')}  Score={score}")
         print("-" * 55)
-        print(doc)    # full text — no truncation
+        print(doc)
     print()
 
 
-# ── Run diagnostics ──
+# N11 FIX: All executable code is inside __main__ guard.
+# Previously lines 11-18 ran at module import time, loading the 90MB model
+# and connecting to ChromaDB whenever this file was imported by any test runner.
+if __name__ == "__main__":
+    client = chromadb.PersistentClient(
+        path=str(CHROMA_DIR),
+        settings=Settings(anonymized_telemetry=False),
+    )
+    collection = client.get_or_create_collection("finance_rag")
+    print(f"Vectors in store: {collection.count()}\n")
 
-debug_query(
-    "HDFC Bank gross NPA non performing assets ratio",
-    where_filter={"company": "HDFC Bank"},
-    n=4,
-)
+    model    = SentenceTransformer("BAAI/bge-small-en-v1.5")
+    embed_fn = make_embed_fn(model)
 
-debug_query(
-    "repo rate monetary policy committee decision 2024",
-    where_filter={"doc_type": "rbi"},
-    n=3,
-)
+    debug_query(
+        collection, embed_fn,
+        "HDFC Bank gross NPA non performing assets ratio",
+        where_filter={"company": "HDFC Bank"},
+        n=4,
+    )
+
+    debug_query(
+        collection, embed_fn,
+        "repo rate monetary policy committee decision 2024",
+        where_filter={"doc_type": "rbi"},
+        n=3,
+    )

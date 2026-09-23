@@ -19,6 +19,7 @@ import os
 import sys
 import time
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
@@ -40,50 +41,68 @@ from sentence_transformers import SentenceTransformer
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# ── FastAPI app ──
-app = FastAPI(
-    title="Finance RAG API",
-    description="Q&A over Indian company annual reports and RBI publications",
-    version="1.0.0",
-)
-
-# Allow Streamlit frontend to call this API
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# ── Global chain (loaded once at startup) ──
+# ── Global state ──
 rag_chain: Optional[FinanceRAGChain] = None
 vector_count: int = 0
+_retriever: Optional[FinanceRetriever] = None   # BUG 7 FIX: kept so top_k can be overridden per-request
 
 
-@app.on_event("startup")
-async def startup():
+# BUG 5 FIX: Replaced deprecated @app.on_event("startup") with lifespan context manager
+# (required since FastAPI 0.93 — generates deprecation warnings on 0.115.4)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     """Load models and connect to ChromaDB when the server starts."""
-    global rag_chain, vector_count
+    global rag_chain, vector_count, _retriever
     logger.info("Loading RAG system...")
 
     client     = build_chroma_client(CHROMA_DIR)
     collection = get_or_create_collection(client)
     vector_count = collection.count()
 
-    model     = SentenceTransformer(EMBEDDING_MODEL_NAME)
-    retriever = FinanceRetriever(collection, model, top_k=5)
+    model      = SentenceTransformer(EMBEDDING_MODEL_NAME)
+    # BUG 7 FIX: Store retriever separately so per-request top_k can be applied
+    _retriever = FinanceRetriever(collection, model, top_k=5)
 
     groq_key   = os.getenv("GROQ_API_KEY", "")
     openai_key = os.getenv("OPENAI_API_KEY", "")
 
     if groq_key:
-        rag_chain = FinanceRAGChain(retriever, api_key=groq_key, provider="groq")
+        rag_chain = FinanceRAGChain(_retriever, api_key=groq_key, provider="groq")
         logger.info(f"RAG system ready — {vector_count:,} vectors, Groq LLM")
     elif openai_key:
-        rag_chain = FinanceRAGChain(retriever, api_key=openai_key, provider="openai")
+        rag_chain = FinanceRAGChain(_retriever, api_key=openai_key, provider="openai")
         logger.info(f"RAG system ready — {vector_count:,} vectors, OpenAI LLM")
     else:
         logger.error("No API key found — LLM will not work")
+
+    yield  # server is running
+
+    # Shutdown: nothing to clean up for ChromaDB PersistentClient
+    logger.info("Shutting down RAG system.")
+
+
+# ── FastAPI app ──
+app = FastAPI(
+    title="Finance RAG API",
+    description="Q&A over Indian company annual reports and RBI publications",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+# BUG 6 FIX: Restrict CORS to known origins instead of wildcard "*"
+# For local dev both Streamlit (8501) and API docs (8000) are allowed.
+# In production, replace with your actual deployed frontend URL.
+_ALLOWED_ORIGINS = os.getenv(
+    "CORS_ORIGINS",
+    "http://localhost:8501,http://localhost:8000"
+).split(",")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_ALLOWED_ORIGINS,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "Authorization"],
+)
 
 
 # ── Request / Response schemas ──
@@ -144,6 +163,10 @@ async def query(request: QueryRequest):
     """
     if rag_chain is None:
         raise HTTPException(status_code=503, detail="RAG system not loaded")
+
+    # BUG 7 FIX: Apply per-request top_k to the retriever before each query
+    if _retriever is not None:
+        _retriever.top_k = request.top_k
 
     # Build where filter
     where_filter = None

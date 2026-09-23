@@ -4,6 +4,7 @@ and local Ollama.
 """
 
 import logging
+import os
 from typing import Optional
 
 from openai import (
@@ -81,7 +82,7 @@ def make_llm_client(api_key: str, provider: str = "groq") -> tuple[OpenAI, str]:
             base_url="https://api.groq.com/openai/v1",
             http_client=http_client,
         )
-        model = "llama-3.1-8b-instant"
+        model = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
     elif provider == "openai":
         client = OpenAI(
             api_key=api_key,
@@ -186,10 +187,12 @@ class FinanceRAGChain:
         api_key: str,
         provider: str = "groq",
         temperature: float = 0.0,
+        max_tokens: int = 1024,   # N7 FIX: was hardcoded in query() — now configurable
     ):
         self.retriever = retriever
         self.temperature = temperature
         self.provider = provider
+        self.max_tokens = max_tokens   # N7 FIX
         self.llm, self.model = make_llm_client(api_key, provider)
 
     def query(
@@ -238,7 +241,7 @@ class FinanceRAGChain:
                 model=self.model,
                 messages=messages,
                 temperature=self.temperature,
-                max_tokens=1024,
+                max_tokens=self.max_tokens,   # N7 FIX: was hardcoded 1024
             )
         except Exception as exc:
             logger.exception("LLM generation failed for question: %s", question)

@@ -45,7 +45,7 @@ def build_chain(top_k: int = 5) -> FinanceRAGChain:
     # ── Auto-detect which provider to use based on .env ──
     if GROQ_API_KEY:
         chain = FinanceRAGChain(retriever, api_key=GROQ_API_KEY, provider="groq")
-        provider_info = "Groq / llama-3.1-8b-instant (free)"
+        provider_info = "Groq / configured model"
     elif OPENAI_API_KEY:
         chain = FinanceRAGChain(
             retriever,

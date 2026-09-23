@@ -1,5 +1,5 @@
 # scripts/peek_pdf.py  — run this once, then we can delete it
-"""Quick diagnostic — shows what text PyMuPDF extracts from your first 2 PDFs."""
+"""Quick diagnostic — shows what text PyMuPDF extracts from our first 2 PDFs."""
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))

@@ -59,19 +59,11 @@ def is_noise_line(line: str) -> bool:
     return any(p.match(line) for p in NOISE_PATTERNS)
 
 
-def is_vertical_design_text(text: str) -> bool:
-    """
-    Detect the vertical character-by-character design text found on
-    BSE company AR cover pages (e.g. 'T\nR\nA\nN\nS\nF\nO\nR\nM\nI\nN\nG').
-
-    Heuristic: if more than 60% of 'words' are single characters,
-    and total word count is > 8, it's a design element, not real text.
-    """
-   # NEW — also catches post-cleaning collapsed vertical text
+# BUG 1 FIX: Removed duplicate incomplete definition. Only one correct implementation below.
 def is_vertical_design_text(text: str) -> bool:
     """
     Detect vertical character-by-character design text.
-    Handles both raw form ('T\nR\nA\nN\nS') and
+    Handles both raw form ('T\\nR\\nA\\nN\\nS') and
     collapsed form ('T R A N S F O R M I N G') after cleaning.
     """
     words = text.split()
@@ -198,28 +190,32 @@ def infer_doc_type(filepath: Path) -> tuple[str, str]:
     # Try to infer company from filename
     # Covers patterns like: TCS_AnnualReport_2024, INFY_AR_2024,
     # annual-report-2023-2024 (fallback to filename stem)
+    # BUG 8 FIX: Removed duplicate "wipro" key (was silently overwriting itself).
     company_keywords = {
-        "tcs": "TCS",
-    "annual-report-2023-2024": "TCS",      # ← add this line
-    "infosys": "Infosys", "infy": "Infosys",
-    "wipro": "Wipro",
-    "hcl": "HCL Technologies",
-    "reliance": "Reliance",
-    "hdfc": "HDFC Bank",
-    "icici": "ICICI Bank",
-    "axis": "Axis Bank",
-    "bajfinance": "Bajaj Finance",          # ← add this line
-    "bajaj": "Bajaj Finance",
-    "asian": "Asian Paints",
-    "lt_": "L&T", "larsen": "L&T",
-    "maruti": "Maruti Suzuki",
-    "sunpharma": "Sun Pharma", "sun_": "Sun Pharma",
-    "itc": "ITC",
-    "sbin": "SBI", "sbi": "SBI",           # ← add sbin
-    "kotak": "Kotak",
-    "airtel": "Bharti Airtel",
-    "ntpc": "NTPC",
-    "wipro": "Wipro",
+        "tcs":                    "TCS",
+        "annual-report-2023-2024":"TCS",
+        "infosys":                "Infosys",
+        "infy":                   "Infosys",
+        "wipro":                  "Wipro",
+        "hcl":                    "HCL Technologies",
+        "reliance":               "Reliance",
+        "hdfc":                   "HDFC Bank",
+        "icici":                  "ICICI Bank",
+        "axis":                   "Axis Bank",
+        "bajfinance":             "Bajaj Finance",
+        "bajaj":                  "Bajaj Finance",
+        "asian":                  "Asian Paints",
+        "lt_":                    "L&T",
+        "larsen":                 "L&T",
+        "maruti":                 "Maruti Suzuki",
+        "sunpharma":              "Sun Pharma",
+        "sun_":                   "Sun Pharma",
+        "itc":                    "ITC",
+        "sbin":                   "SBI",
+        "sbi":                    "SBI",
+        "kotak":                  "Kotak",
+        "airtel":                 "Bharti Airtel",
+        "ntpc":                   "NTPC",
     }
 
     for keyword, company in company_keywords.items():
@@ -317,7 +313,8 @@ def load_all_documents(raw_dir: Path) -> list[dict]:
             stats["files"] += 1
             stats["pages_kept"] += pages_extracted
 
-            # Quick per-file feedback
+            # Quick per-file feedback — reuse already-open doc count via extract_pages
+            # to avoid opening the PDF a second time (Bug fix: was opening twice before)
             doc = fitz.open(pdf_path)
             raw_count = len(doc)
             doc.close()

@@ -317,3 +317,9 @@ Key lessons from building this:
 - Provider-agnostic design makes the system portable and cost-flexible
 
 
+eval consistently outperforms pure vector search on domain-specific text
+- RAGAS evaluation turns subjective quality judgement into measurable, comparable metrics
+- Table data in PDFs requires separate extraction logic from prose text
+- Provider-agnostic design makes the system portable and cost-flexible
+
+

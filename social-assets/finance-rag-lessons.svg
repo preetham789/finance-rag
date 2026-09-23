@@ -1,0 +1,67 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#0f172a" flood-opacity="0.11"/>
+    </filter>
+    <style>
+      .title { font: 850 60px "Segoe UI", Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 400 26px "Segoe UI", Arial, sans-serif; fill: #475569; }
+      .card { fill: #ffffff; stroke: #d8e0ea; stroke-width: 2; filter: url(#shadow); }
+      .head { font: 800 30px "Segoe UI", Arial, sans-serif; fill: #0f172a; }
+      .body { font: 400 22px "Segoe UI", Arial, sans-serif; fill: #475569; }
+      .label { font: 800 15px "Segoe UI", Arial, sans-serif; fill: #ffffff; }
+      .footer { font: 500 22px "Segoe UI", Arial, sans-serif; fill: #334155; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" fill="#f8fafc"/>
+  <rect x="0" y="0" width="1600" height="18" fill="#0f766e"/>
+  <text class="title" x="98" y="112">What I Learned Building Finance RAG</text>
+  <text class="subtitle" x="102" y="154">The hard parts were not where I expected them to be</text>
+
+  <g transform="translate(98,238)">
+    <rect class="card" x="0" y="0" width="420" height="360" rx="22"/>
+    <rect x="30" y="30" width="118" height="34" rx="17" fill="#2563eb"/>
+    <text class="label" x="52" y="53">LESSON 1</text>
+    <text class="head" x="30" y="112">Data quality beats</text>
+    <text class="head" x="30" y="150">model size</text>
+    <text class="body" x="30" y="210">Messy PDFs, noisy headers,</text>
+    <text class="body" x="30" y="246">page numbers, and broken</text>
+    <text class="body" x="30" y="282">tables can ruin answers</text>
+    <text class="body" x="30" y="318">before the LLM even starts.</text>
+  </g>
+
+  <g transform="translate(590,238)">
+    <rect class="card" x="0" y="0" width="420" height="360" rx="22"/>
+    <rect x="30" y="30" width="118" height="34" rx="17" fill="#d97706"/>
+    <text class="label" x="52" y="53">LESSON 2</text>
+    <text class="head" x="30" y="112">Finance needs</text>
+    <text class="head" x="30" y="150">hybrid retrieval</text>
+    <text class="body" x="30" y="210">Vector search understands</text>
+    <text class="body" x="30" y="246">meaning, but BM25 catches</text>
+    <text class="body" x="30" y="282">exact terms like NPA, CRR,</text>
+    <text class="body" x="30" y="318">GNPA, and repo rate.</text>
+  </g>
+
+  <g transform="translate(1082,238)">
+    <rect class="card" x="0" y="0" width="420" height="360" rx="22"/>
+    <rect x="30" y="30" width="118" height="34" rx="17" fill="#e11d48"/>
+    <text class="label" x="52" y="53">LESSON 3</text>
+    <text class="head" x="30" y="112">Citations create</text>
+    <text class="head" x="30" y="150">trust</text>
+    <text class="body" x="30" y="210">In finance, a fluent answer</text>
+    <text class="body" x="30" y="246">is not enough. Users need</text>
+    <text class="body" x="30" y="282">source file, page number,</text>
+    <text class="body" x="30" y="318">and retrieved context.</text>
+  </g>
+
+  <g transform="translate(98,660)">
+    <rect x="0" y="0" width="1404" height="130" rx="24" fill="#ffffff" stroke="#d8e0ea" stroke-width="2" filter="url(#shadow)"/>
+    <text x="34" y="46" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="800" fill="#0f172a">Mistake I made</text>
+    <text x="34" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="22" fill="#475569">I trusted file counts too much. One wrong PDF can make a RAG system look healthy while failing real questions.</text>
+    <text x="838" y="46" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="800" fill="#0f172a">How I fixed it</text>
+    <text x="838" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="22" fill="#475569">I added corpus validation, table-aware parsing, metadata, hybrid retrieval, and a fixed evaluation set.</text>
+  </g>
+
+  <text class="footer" x="98" y="850">Finance RAG: source-grounded answers over Indian financial documents</text>
+</svg>

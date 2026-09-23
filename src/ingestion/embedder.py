@@ -34,6 +34,7 @@ from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
+# Suppress noisy Chroma/PostHog telemetry warnings
 TELEMETRY_LOGGERS = (
     "chromadb.telemetry.product.posthog",
     "posthog",
@@ -78,7 +79,6 @@ def build_chroma_client(persist_dir: Path) -> chromadb.PersistentClient:
     On restart, just point to the same directory — your vectors are still there.
     """
     persist_dir.mkdir(parents=True, exist_ok=True)
-    # Chroma telemetry can still log compatibility errors even when disabled.
     for logger_name in TELEMETRY_LOGGERS:
         logging.getLogger(logger_name).disabled = True
     client = chromadb.PersistentClient(
@@ -98,11 +98,10 @@ def get_or_create_collection(client: chromadb.PersistentClient) -> chromadb.Coll
       unrelated. It's the standard for semantic search because it ignores
       vector magnitude (document length) and focuses purely on direction (meaning).
     """
-    collection = client.get_or_create_collection(
+    return client.get_or_create_collection(
         name=COLLECTION_NAME,
-        metadata={"hnsw:space": "cosine"},  # cosine distance for semantic search
+        metadata={"hnsw:space": "cosine"},
     )
-    return collection
 
 
 def chunk_batches(items: list, batch_size: int) -> Iterator[list]:
@@ -132,7 +131,6 @@ def embed_and_store(
     The metadata is what enables filtered retrieval:
       collection.query(where={"company": "HDFC Bank"})
     """
-    # Check how many are already in the collection
     existing_count = collection.count()
     if existing_count > 0:
         print(f"  Collection already has {existing_count} vectors.")
@@ -141,6 +139,7 @@ def embed_and_store(
     total_batches = (len(chunks) + batch_size - 1) // batch_size
     stats = {"embedded": 0, "errors": 0}
     start_time = time.time()
+    MAX_RETRIES = 3   # N9 FIX: retry transient failures instead of silently dropping chunks
 
     for batch in tqdm(
         chunk_batches(chunks, batch_size),
@@ -148,52 +147,54 @@ def embed_and_store(
         desc="Embedding batches",
         unit="batch",
     ):
-        try:
-            # ── Extract fields for this batch ──
-            ids        = [c["chunk_id"] for c in batch]
-            texts      = [c["text"] for c in batch]
-            metadatas  = [
-                {
-                    # ChromaDB metadata values must be str, int, float, or bool
-                    # Convert anything else to string
-                    "source_file":  str(c["source_file"]),
-                    "page_number":  int(c["page_number"]),
-                    "doc_type":     str(c["doc_type"]),
-                    "company":      str(c["company"]),
-                    "strategy":     str(c["strategy"]),
-                    "word_count":   int(c["word_count"]),
-                    "chunk_index":  int(c["chunk_index"]),
-                }
-                for c in batch
-            ]
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                ids       = [c["chunk_id"] for c in batch]
+                texts     = [c["text"] for c in batch]
+                metadatas = [
+                    {
+                        # ChromaDB metadata values must be str, int, float, or bool
+                        "source_file":  str(c["source_file"]),
+                        "page_number":  int(c["page_number"]),
+                        "doc_type":     str(c["doc_type"]),
+                        "company":      str(c["company"]),
+                        "strategy":     str(c["strategy"]),
+                        "word_count":   int(c["word_count"]),
+                        "chunk_index":  int(c["chunk_index"]),
+                    }
+                    for c in batch
+                ]
+                # BGE document embeddings don't need a prefix (only query-side does)
+                embeddings = model.encode(
+                    texts,
+                    batch_size=batch_size,
+                    show_progress_bar=False,
+                    normalize_embeddings=True,
+                ).tolist()
+                collection.upsert(
+                    ids=ids,
+                    embeddings=embeddings,
+                    documents=texts,
+                    metadatas=metadatas,
+                )
+                stats["embedded"] += len(batch)
+                break  # success — exit retry loop
 
-            # ── Embed — this is the expensive step ──
-            # BGE models work best with a query prefix for retrieval tasks.
-            # For documents being stored, no prefix needed.
-            embeddings = model.encode(
-                texts,
-                batch_size=batch_size,
-                show_progress_bar=False,
-                normalize_embeddings=True,  # unit normalize for cosine similarity
-            ).tolist()
-
-            # ── Upsert into ChromaDB ──
-            collection.upsert(
-                ids=ids,
-                embeddings=embeddings,
-                documents=texts,
-                metadatas=metadatas,
-            )
-
-            stats["embedded"] += len(batch)
-
-        except Exception as e:
-            logger.error(f"Batch failed: {e}")
-            stats["errors"] += len(batch)
+            except Exception as e:
+                if attempt < MAX_RETRIES:
+                    wait = 2 ** attempt   # exponential backoff: 2s, 4s
+                    logger.warning(
+                        f"Batch attempt {attempt}/{MAX_RETRIES} failed ({e})"
+                        f" — retrying in {wait}s"
+                    )
+                    time.sleep(wait)
+                else:
+                    logger.error(f"Batch permanently failed after {MAX_RETRIES} attempts: {e}")
+                    stats["errors"] += len(batch)
 
     elapsed = time.time() - start_time
     stats["elapsed_seconds"] = round(elapsed)
-    stats["chunks_per_second"] = round(len(chunks) / elapsed, 1)
+    stats["chunks_per_second"] = round(len(chunks) / max(elapsed, 0.01), 1)
     return stats
 
 
@@ -231,7 +232,7 @@ def verify_collection(collection: chromadb.Collection) -> None:
                 results["metadatas"][0],
                 results["distances"][0],
             )):
-                score = round(1 - dist, 3)  # cosine distance → similarity score
+                score = round(1 - dist, 3)
                 print(f"    [{i+1}] score={score}  company={meta['company']}  "
                       f"page={meta['page_number']}")
                 print(f"         {doc[:120].strip()}...")

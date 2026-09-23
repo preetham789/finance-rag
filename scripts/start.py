@@ -11,7 +11,30 @@ import sys
 import subprocess
 import time
 import argparse
+import urllib.request
+import urllib.error
 from pathlib import Path
+
+
+def wait_for_api(url: str = "http://127.0.0.1:8000/health",
+                 timeout: int = 120) -> bool:
+    """
+    N4 FIX: Poll /health until the API is ready instead of sleeping a fixed 3s.
+    On first run the SentenceTransformer model downloads ~90MB — that takes
+    far longer than 3 seconds, causing Streamlit to show 'API offline'.
+    """
+    print("  Waiting for API to become ready", end="", flush=True)
+    for _ in range(timeout):
+        try:
+            urllib.request.urlopen(url, timeout=2)
+            print(" ✓")
+            return True
+        except Exception:
+            print(".", end="", flush=True)
+            time.sleep(1)
+    print(" TIMEOUT")
+    return False
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -23,7 +46,7 @@ def main():
 
     api_cmd = [sys.executable, "-m", "uvicorn",
                "src.api.main:app",
-               "--host", "0.0.0.0",
+               "--host", "127.0.0.1",   # N3 FIX: was 0.0.0.0 — exposed API to LAN
                "--port", "8000",
                "--reload"]
 
@@ -32,8 +55,8 @@ def main():
                "--server.port", "8501"]
 
     if args.api:
-        print("Starting API at http://localhost:8000")
-        print("API docs at  http://localhost:8000/docs")
+        print("Starting API at http://127.0.0.1:8000")
+        print("API docs at  http://127.0.0.1:8000/docs")
         subprocess.run(api_cmd, cwd=root)
 
     elif args.ui:
@@ -41,19 +64,24 @@ def main():
         subprocess.run(ui_cmd, cwd=root)
 
     else:
-        # Start API in background, UI in foreground
+        # Start API in background, wait until healthy, then start UI
         print("Starting Finance RAG System")
-        print("  API → http://localhost:8000")
+        print("  API → http://127.0.0.1:8000")
         print("  UI  → http://localhost:8501")
-        print("  Docs→ http://localhost:8000/docs")
+        print("  Docs→ http://127.0.0.1:8000/docs")
         print("\nPress Ctrl+C to stop\n")
 
         api_proc = subprocess.Popen(api_cmd, cwd=root)
-        time.sleep(3)   # give API time to load models
+        ready = wait_for_api()   # N4 FIX: health-check poll, not sleep(3)
+        if not ready:
+            print("ERROR: API did not start in time. Check logs above.")
+            api_proc.terminate()
+            sys.exit(1)
         try:
             subprocess.run(ui_cmd, cwd=root)
         finally:
             api_proc.terminate()
+
 
 if __name__ == "__main__":
     main()

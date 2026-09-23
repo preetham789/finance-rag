@@ -6,10 +6,12 @@ Talks to the FastAPI backend at localhost:8000.
 Recruiters open this in their browser and ask questions directly.
 """
 
+import os
 import requests
 import streamlit as st
 
-API_URL = "http://localhost:8000"
+# N5 FIX: Read API URL from environment variable — was hardcoded "http://localhost:8000"
+API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
 
 # ── Page config ──
 st.set_page_config(
@@ -48,12 +50,16 @@ with st.sidebar:
 
     st.divider()
     st.subheader("System status")
+
+    # Fetch health once per sidebar render — reuse vector count for spinner
+    _vector_count = 0
     try:
         health = requests.get(f"{API_URL}/health", timeout=3).json()
-        st.success(f"API online")
-        st.metric("Vectors", f"{health['vectors']:,}")
+        _vector_count = health.get("vectors", 0)
+        st.success("API online")
+        st.metric("Vectors", f"{_vector_count:,}")
     except Exception:
-        st.error("API offline — start with: uvicorn src.api.main:app")
+        st.error("API offline — start with: python scripts\\start.py")
 
     st.divider()
     st.subheader("Example questions")
@@ -97,7 +103,9 @@ if question:
 
     # Call API
     with st.chat_message("assistant"):
-        with st.spinner("Searching 33,000+ chunks..."):
+        # N6 FIX: Dynamic chunk count from health endpoint — was hardcoded "33,000+"
+        chunk_label = f"{_vector_count:,}" if _vector_count else "all"
+        with st.spinner(f"Searching {chunk_label} chunks..."):
             try:
                 payload = {
                     "question": question,
@@ -141,6 +149,6 @@ if question:
                 })
 
             except requests.exceptions.ConnectionError:
-                st.error("Cannot reach API. Run: uvicorn src.api.main:app --reload")
+                st.error("Cannot reach API. Run: python scripts\\start.py")
             except Exception as e:
                 st.error(f"Error: {e}")

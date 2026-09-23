@@ -22,3 +22,21 @@ experiments/
 
 # macOS
 .DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Logs & MLflow runs
+*.log
+mlruns/
+
+# Archives
+*.zip
+*.tar.gz
+*.rar

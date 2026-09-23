@@ -10,6 +10,10 @@ httpx==0.27.2          # OpenAI 1.54.x breaks against httpx 0.28+ default client
 chromadb==0.5.18
 posthog<6              # newer posthog releases break Chroma telemetry's capture() call shape
 
+# Retrieval
+rank-bm25==0.2.2       # BUG FIX: required for hybrid search (default mode) — was missing
+tiktoken==0.8.0        # BUG FIX: required for TokenTextSplitter — was missing
+
 # Embeddings (local, free)
 sentence-transformers==3.3.0
 

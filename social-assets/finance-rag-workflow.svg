@@ -1,0 +1,101 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M2 2 L10 6 L2 10" fill="none" stroke="#334155" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#0f172a" flood-opacity="0.10"/>
+    </filter>
+    <style>
+      .title { font: 800 58px "Segoe UI", Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 400 26px "Segoe UI", Arial, sans-serif; fill: #475569; }
+      .panel { fill: #ffffff; stroke: #d8e0ea; stroke-width: 2; filter: url(#shadow); }
+      .num { font: 800 32px "Segoe UI", Arial, sans-serif; fill: #ffffff; }
+      .head { font: 750 28px "Segoe UI", Arial, sans-serif; fill: #0f172a; }
+      .body { font: 400 20px "Segoe UI", Arial, sans-serif; fill: #475569; }
+      .tag { font: 700 16px "Segoe UI", Arial, sans-serif; fill: #0f172a; }
+      .footer { font: 500 20px "Segoe UI", Arial, sans-serif; fill: #334155; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" fill="#f8fafc"/>
+  <rect x="80" y="72" width="1440" height="756" rx="28" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+  <text class="title" x="126" y="146">From 9,155 Pages to Cited Answers</text>
+  <text class="subtitle" x="130" y="190">The workflow behind my Finance RAG project</text>
+
+  <g transform="translate(130,270)">
+    <rect class="panel" x="0" y="0" width="230" height="300" rx="18"/>
+    <circle cx="56" cy="58" r="32" fill="#2563eb"/>
+    <text class="num" x="47" y="69">1</text>
+    <text class="head" x="28" y="125">Collect</text>
+    <text class="body" x="28" y="166">Company annual</text>
+    <text class="body" x="28" y="194">reports and RBI</text>
+    <text class="body" x="28" y="222">publications</text>
+    <rect x="28" y="248" width="142" height="32" rx="16" fill="#dbeafe"/>
+    <text class="tag" x="48" y="270">50 PDFs</text>
+  </g>
+
+  <line x1="384" y1="420" x2="470" y2="420" stroke="#334155" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <g transform="translate(490,270)">
+    <rect class="panel" x="0" y="0" width="230" height="300" rx="18"/>
+    <circle cx="56" cy="58" r="32" fill="#d97706"/>
+    <text class="num" x="47" y="69">2</text>
+    <text class="head" x="28" y="125">Parse</text>
+    <text class="body" x="28" y="166">Remove noise,</text>
+    <text class="body" x="28" y="194">recover tables,</text>
+    <text class="body" x="28" y="222">keep metadata</text>
+    <rect x="28" y="248" width="166" height="32" rx="16" fill="#fef3c7"/>
+    <text class="tag" x="50" y="270">PyMuPDF</text>
+  </g>
+
+  <line x1="744" y1="420" x2="830" y2="420" stroke="#334155" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <g transform="translate(850,270)">
+    <rect class="panel" x="0" y="0" width="230" height="300" rx="18"/>
+    <circle cx="56" cy="58" r="32" fill="#7c3aed"/>
+    <text class="num" x="47" y="69">3</text>
+    <text class="head" x="28" y="125">Embed</text>
+    <text class="body" x="28" y="166">Split text into</text>
+    <text class="body" x="28" y="194">chunks and turn</text>
+    <text class="body" x="28" y="222">them into vectors</text>
+    <rect x="28" y="248" width="146" height="32" rx="16" fill="#ede9fe"/>
+    <text class="tag" x="50" y="270">BGE model</text>
+  </g>
+
+  <line x1="1104" y1="420" x2="1190" y2="420" stroke="#334155" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <g transform="translate(1210,270)">
+    <rect class="panel" x="0" y="0" width="230" height="300" rx="18"/>
+    <circle cx="56" cy="58" r="32" fill="#059669"/>
+    <text class="num" x="47" y="69">4</text>
+    <text class="head" x="28" y="125">Retrieve</text>
+    <text class="body" x="28" y="166">Use semantic</text>
+    <text class="body" x="28" y="194">search plus exact</text>
+    <text class="body" x="28" y="222">keyword match</text>
+    <rect x="28" y="248" width="160" height="32" rx="16" fill="#dcfce7"/>
+    <text class="tag" x="47" y="270">Hybrid RAG</text>
+  </g>
+
+  <path d="M1325 592 C1325 690 890 690 890 650" fill="none" stroke="#334155" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <g transform="translate(500,642)">
+    <rect x="0" y="0" width="600" height="92" rx="22" fill="#0f172a"/>
+    <text x="32" y="38" font-family="Segoe UI, Arial, sans-serif" font-size="25" font-weight="750" fill="#ffffff">5. Generate a grounded answer</text>
+    <text x="32" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="400" fill="#cbd5e1">LLM answers only from retrieved context and cites exact source pages.</text>
+  </g>
+
+  <g transform="translate(130,642)">
+    <rect x="0" y="0" width="298" height="92" rx="22" fill="#fff7ed" stroke="#fed7aa" stroke-width="2"/>
+    <text x="24" y="38" font-family="Segoe UI, Arial, sans-serif" font-size="23" font-weight="750" fill="#9a3412">Key lesson</text>
+    <text x="24" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="20" fill="#7c2d12">Data quality beats prompt magic.</text>
+  </g>
+
+  <g transform="translate(1172,642)">
+    <rect x="0" y="0" width="268" height="92" rx="22" fill="#ecfdf5" stroke="#bbf7d0" stroke-width="2"/>
+    <text x="24" y="38" font-family="Segoe UI, Arial, sans-serif" font-size="23" font-weight="750" fill="#065f46">Output</text>
+    <text x="24" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="20" fill="#064e3b">Answer + citations + sources</text>
+  </g>
+
+  <text class="footer" x="130" y="794">Finance RAG: annual reports + RBI publications + hybrid retrieval</text>
+</svg>

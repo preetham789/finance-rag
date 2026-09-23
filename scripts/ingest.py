@@ -54,7 +54,7 @@ def save_chunks_jsonl(chunks: list[dict], output_path: Path) -> None:
             "_type": "run_metadata",
             "timestamp": datetime.now().isoformat(),
             "chunk_count": len(chunks),
-            "strategy": chunks[0]["strategy"] if chunks else "unknown",
+            "strategy": args.strategy,          # N10 FIX: was chunks[0]["strategy"] which broke on empty corpus
             "chunk_size": CHUNK_SIZE,
             "chunk_overlap": CHUNK_OVERLAP,
         }
