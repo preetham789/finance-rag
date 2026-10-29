@@ -1,0 +1,24 @@
+# The vector store is built locally (ingest.py + embed.py) and mounted in, not baked
+# into the image. Mounted read-write because ChromaDB's SQLite needs to write.
+services:
+  api:
+    build: .
+    env_file: .env
+    ports: ["8000:8000"]
+    volumes:
+      - ./experiments/chromadb:/app/experiments/chromadb
+      - ./data/processed:/app/data/processed:ro
+    restart: unless-stopped
+
+  ui:
+    build: .
+    command: ["streamlit", "run", "src/api/streamlit_app.py",
+              "--server.port=8501", "--server.address=0.0.0.0"]
+    environment:
+      - API_URL=http://api:8000
+    ports: ["8501:8501"]
+    healthcheck:
+      disable: true
+    depends_on:
+      api:
+        condition: service_healthy

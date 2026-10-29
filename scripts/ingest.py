@@ -41,7 +41,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def save_chunks_jsonl(chunks: list[dict], output_path: Path) -> None:
+def save_chunks_jsonl(chunks: list[dict], output_path: Path, strategy: str = "recursive") -> None:
     """
     Save chunks as JSONL — one JSON object per line.
     Appends a run metadata header as the first line.
@@ -54,7 +54,7 @@ def save_chunks_jsonl(chunks: list[dict], output_path: Path) -> None:
             "_type": "run_metadata",
             "timestamp": datetime.now().isoformat(),
             "chunk_count": len(chunks),
-            "strategy": args.strategy,          # N10 FIX: was chunks[0]["strategy"] which broke on empty corpus
+            "strategy": strategy,
             "chunk_size": CHUNK_SIZE,
             "chunk_overlap": CHUNK_OVERLAP,
         }
@@ -81,8 +81,10 @@ def print_sample_chunks(chunks: list[dict], n: int = 3) -> None:
     company_chunks = [c for c in chunks if c["doc_type"] == "company"]
 
     samples = []
-    if rbi_chunks:     samples.append(rbi_chunks[0])
-    if company_chunks: samples.append(company_chunks[0])
+    if rbi_chunks:
+        samples.append(rbi_chunks[0])
+    if company_chunks:
+        samples.append(company_chunks[0])
     # Add a chunk from the middle of the list for variety
     if len(chunks) > 100:
         samples.append(chunks[len(chunks) // 2])
@@ -94,7 +96,7 @@ def print_sample_chunks(chunks: list[dict], n: int = 3) -> None:
         print(f"  Company  : {chunk['company']}")
         print(f"  Page     : {chunk['page_number']}")
         print(f"  Words    : {chunk['word_count']}")
-        print(f"  Text     :\n")
+        print("  Text     :\n")
         # Wrap text at 70 chars for readability in terminal
         words = chunk["text"].split()
         line, lines_out = [], []
@@ -126,12 +128,12 @@ def print_corpus_stats(chunks: list[dict]) -> None:
         print(f"  {company:<25} {count:>5} chunks  {bar}")
 
     by_type = Counter(c["doc_type"] for c in chunks)
-    print(f"\nBy type:")
+    print("\nBy type:")
     for doc_type, count in by_type.items():
         print(f"  {doc_type:<12} {count:>5} chunks")
 
     word_counts = [c["word_count"] for c in chunks]
-    print(f"\nWord count stats:")
+    print("\nWord count stats:")
     print(f"  Total words   : {sum(word_counts):,}")
     print(f"  Avg per chunk : {sum(word_counts)//len(word_counts)}")
     print(f"  Min           : {min(word_counts)}")
@@ -207,12 +209,12 @@ def main():
     # ── Step 4: Save ──
     print("\nStep 4: Saving...")
     output_path = PROCESSED_DIR / f"chunks_{args.strategy}.jsonl"
-    save_chunks_jsonl(chunks, output_path)
+    save_chunks_jsonl(chunks, output_path, strategy=args.strategy)
 
     print("\nPhase 2 complete.")
-    print(f"Next: run Phase 3 — embed chunks into ChromaDB")
-    print(f"  python scripts\\ingest.py --strategy recursive  (already done)")
-    print(f"  Then: python scripts\\embed.py")
+    print("Next: run Phase 3 — embed chunks into ChromaDB")
+    print("  python scripts\\ingest.py --strategy recursive  (already done)")
+    print("  Then: python scripts\\embed.py")
 
 
 if __name__ == "__main__":

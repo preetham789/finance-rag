@@ -134,7 +134,7 @@ def embed_and_store(
     existing_count = collection.count()
     if existing_count > 0:
         print(f"  Collection already has {existing_count} vectors.")
-        print(f"  Using upsert — will update existing, add new.\n")
+        print("  Using upsert — will update existing, add new.\n")
 
     total_batches = (len(chunks) + batch_size - 1) // batch_size
     stats = {"embedded": 0, "errors": 0}

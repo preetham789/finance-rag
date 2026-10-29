@@ -26,7 +26,7 @@ from datetime import datetime
 sys.path.append(str(Path(__file__).parent.parent))
 
 from src.config import CHROMA_DIR, TEST_SETS_DIR
-from src.ingestion.embedder import EMBEDDING_MODEL_NAME, COLLECTION_NAME, build_chroma_client, get_or_create_collection
+from src.ingestion.embedder import EMBEDDING_MODEL_NAME, build_chroma_client, get_or_create_collection
 from src.retrieval.retriever import FinanceRetriever
 from src.generation.chain import FinanceRAGChain
 from src.evaluation.ragas_eval import TEST_DATASET, build_ragas_dataset, print_ragas_report
@@ -45,7 +45,8 @@ def build_chain():
     elif openai_key:
         return FinanceRAGChain(retriever, api_key=openai_key, provider="openai")
     else:
-        print("ERROR: No API key found in .env"); sys.exit(1)
+        print("ERROR: No API key found in .env")
+        sys.exit(1)
 
 
 def run_answer_rate(chain, test_data: list, verbose: bool = False) -> list:
@@ -156,7 +157,7 @@ def main():
 
     # ── Step 2: RAGAS metrics (optional, needs OpenAI) ──
     if args.ragas:
-        ragas_scores = run_ragas_metrics(results)
+        run_ragas_metrics(results)
     else:
         print("\nTip: run with --ragas to compute faithfulness/relevancy metrics")
         print("     (requires OPENAI_API_KEY as RAGAS uses GPT-4 as a judge)")

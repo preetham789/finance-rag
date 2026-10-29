@@ -82,8 +82,8 @@ def main():
 
     # ── Step 3: Load embedding model ──
     print(f"\nStep 3: Loading embedding model '{EMBEDDING_MODEL_NAME}'")
-    print(f"  First run downloads ~90MB to ~/.cache/huggingface/")
-    print(f"  Subsequent runs load from cache (fast)\n")
+    print("  First run downloads ~90MB to ~/.cache/huggingface/")
+    print("  Subsequent runs load from cache (fast)\n")
 
     from sentence_transformers import SentenceTransformer
     model = SentenceTransformer(EMBEDDING_MODEL_NAME)
@@ -106,7 +106,7 @@ def main():
 
     # ── Step 5: Results ──
     print(f"\n{'='*60}")
-    print(f"Embedding complete")
+    print("Embedding complete")
     print(f"  Chunks embedded  : {stats['embedded']:,}")
     print(f"  Errors           : {stats['errors']}")
     print(f"  Time taken       : {stats['elapsed_seconds']}s")

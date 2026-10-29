@@ -12,6 +12,7 @@ import streamlit as st
 
 # N5 FIX: Read API URL from environment variable — was hardcoded "http://localhost:8000"
 API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
+DEFAULT_API_KEY = os.getenv("API_KEY", "")
 
 # ── Page config ──
 st.set_page_config(
@@ -47,6 +48,15 @@ with st.sidebar:
         doc_type_filter = st.selectbox("Type", ["rbi", "company"])
 
     top_k = st.slider("Sources to retrieve", 3, 10, 5)
+
+    st.divider()
+    st.subheader("Authentication")
+    user_api_key = st.text_input(
+        "API Key (X-API-Key)",
+        value=DEFAULT_API_KEY,
+        type="password",
+        help="Required when AUTH_MODE=apikey. Set API_KEY in .env or enter here.",
+    )
 
     st.divider()
     st.subheader("System status")
@@ -103,7 +113,6 @@ if question:
 
     # Call API
     with st.chat_message("assistant"):
-        # N6 FIX: Dynamic chunk count from health endpoint — was hardcoded "33,000+"
         chunk_label = f"{_vector_count:,}" if _vector_count else "all"
         with st.spinner(f"Searching {chunk_label} chunks..."):
             try:
@@ -116,24 +125,41 @@ if question:
                 if doc_type_filter:
                     payload["doc_type"] = doc_type_filter
 
+                headers = {}
+                if user_api_key:
+                    headers["X-API-Key"] = user_api_key
+
                 resp = requests.post(
                     f"{API_URL}/query",
                     json=payload,
+                    headers=headers,
                     timeout=30,
                 )
                 resp.raise_for_status()
                 data = resp.json()
 
-                answer  = data["answer"]
-                sources = data["sources"]
-                meta    = (f"Model: `{data['model']}` | "
-                           f"Latency: {data['latency_ms']}ms | "
-                           f"Tokens: {data['tokens_used']}")
+                answer    = data["answer"]
+                sources   = data["sources"]
+                grounding = data.get("grounding")
+
+                meta = (f"Model: `{data['model']}` | "
+                        f"Latency: {data['latency_ms']}ms | "
+                        f"Tokens: {data['tokens_used']}")
 
                 st.markdown(answer)
                 st.caption(meta)
 
-                with st.expander(f"Sources ({len(sources)} retrieved)"):
+                with st.expander(f"Sources & Verification ({len(sources)} retrieved)"):
+                    if grounding:
+                        if grounding.get("refused"):
+                            st.info("ℹ️ System refused (insufficient corpus context)")
+                        elif grounding.get("ok"):
+                            st.success(f"✓ Grounded: {grounding.get('checked_numbers', 0)} numbers and citations verified against chunks")
+                        else:
+                            unsupported = grounding.get("unsupported_numbers")
+                            bad_cites = grounding.get("invalid_citations")
+                            st.warning(f"⚠️ Grounding notice — unsupported numbers: {unsupported}, invalid citations: {bad_cites}")
+
                     for i, src in enumerate(sources, 1):
                         st.markdown(
                             f"**[{i}] {src['company']}** — Page {src['page_number']} "
@@ -150,5 +176,8 @@ if question:
 
             except requests.exceptions.ConnectionError:
                 st.error("Cannot reach API. Run: python scripts\\start.py")
+            except requests.exceptions.HTTPError as e:
+                detail = e.response.json().get("detail", str(e)) if e.response else str(e)
+                st.error(f"HTTP {e.response.status_code if e.response else ''} Error: {detail}")
             except Exception as e:
                 st.error(f"Error: {e}")

@@ -17,6 +17,7 @@ Output: list of dicts, one per page, each containing:
   }
 """
 
+import hashlib
 import re
 import logging
 from pathlib import Path
@@ -33,9 +34,10 @@ NOISE_PATTERNS = [
     re.compile(r"^\s*\d{1,3}\s*$"),
 
     # RBI report headers on their own line
+    # Matches both "ANNUAL REPORT 2023-24" and "ANNUAL REPORT 2024" (standalone year)
     re.compile(r"^\s*(ANNUAL REPORT|MONETARY POLICY REPORT|FINANCIAL STABILITY REPORT"
                r"|REPORT ON CURRENCY AND FINANCE|RBI BULLETIN"
-               r"|RESERVE BANK OF INDIA)\s*(\d{4}[-–]\d{2,4})?\s*$", re.IGNORECASE),
+               r"|RESERVE BANK OF INDIA)\s*(\d{4}([-–]\d{2,4})?)?\s*$", re.IGNORECASE),
 
     # Chapter headers repeated as running headers  e.g. "ECONOMIC REVIEW"
     re.compile(r"^\s*(ECONOMIC REVIEW|MONETARY POLICY OPERATIONS|CREDIT DELIVERY"
@@ -181,16 +183,41 @@ def infer_doc_type(filepath: Path) -> tuple[str, str]:
     Returns: (doc_type, entity_name)
       e.g. ("rbi", "RBI") or ("company", "TCS")
     """
+    doc_type, entity, _, _ = infer_metadata(filepath)
+    return doc_type, entity
+
+
+def infer_metadata(filepath: Path) -> tuple[str, str, str, str]:
+    """
+    Extract structured metadata from document path and filename:
+    (doc_type, entity_name, fiscal_year, report_type).
+
+    Examples:
+      - HDFCBANK_AnnualReport_2024.pdf -> ("company", "HDFC Bank", "2024", "annual_report")
+      - 03MONETARY29052025...pdf -> ("rbi", "RBI", "2025", "monetary_policy")
+    """
     name_lower = filepath.stem.lower()
 
-    # RBI documents live in the rbi/ subfolder
-    if "rbi" in filepath.parts or "rbi" in name_lower:
-        return "rbi", "RBI"
+    # Determine fiscal year
+    fy_match = re.search(r"(?:20\d{2}[-–_]?\d{2,4}|20\d{2}|fy\d{2,4})", name_lower)
+    fiscal_year = fy_match.group(0).upper() if fy_match else "2024"
 
-    # Try to infer company from filename
-    # Covers patterns like: TCS_AnnualReport_2024, INFY_AR_2024,
-    # annual-report-2023-2024 (fallback to filename stem)
-    # BUG 8 FIX: Removed duplicate "wipro" key (was silently overwriting itself).
+    # Determine report type
+    if "monetary" in name_lower or "mpr" in name_lower:
+        report_type = "monetary_policy"
+    elif "stability" in name_lower or "fsr" in name_lower:
+        report_type = "financial_stability"
+    elif "economic" in name_lower:
+        report_type = "economic_review"
+    elif "annual" in name_lower or "ar" in name_lower:
+        report_type = "annual_report"
+    else:
+        report_type = "report"
+
+    # RBI documents live in the rbi/ subfolder or have rbi in filename
+    if "rbi" in filepath.parts or "rbi" in name_lower:
+        return "rbi", "RBI", fiscal_year, report_type
+
     company_keywords = {
         "tcs":                    "TCS",
         "annual-report-2023-2024":"TCS",
@@ -220,10 +247,66 @@ def infer_doc_type(filepath: Path) -> tuple[str, str]:
 
     for keyword, company in company_keywords.items():
         if keyword in name_lower:
-            return "company", company
+            return "company", company, fiscal_year, report_type
 
     # Fallback: use filename stem, truncated
-    return "company", filepath.stem[:30]
+    return "company", filepath.stem[:30], fiscal_year, report_type
+
+
+def compute_file_hash(filepath: Path) -> str:
+    """Compute SHA-256 hash of a file for content-based deduplication."""
+    hasher = hashlib.sha256()
+    with open(filepath, "rb") as f:
+        while chunk := f.read(65536):
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
+
+def audit_document(filepath: Path) -> dict:
+    """
+    Audit document at ingest:
+    Inspects page count, character density, and flags near-zero text (scanned)
+    or odd page count (wrong entity).
+
+    Returns a summary dict and logs warnings on anomalies.
+    """
+    doc_type, entity, fy, report_type = infer_metadata(filepath)
+    doc = fitz.open(filepath)
+    page_count = len(doc)
+    total_chars = 0
+
+    for page in doc:
+        total_chars += len(page.get_text("text").strip())
+    doc.close()
+
+    chars_per_page = total_chars // max(page_count, 1)
+    is_scanned = chars_per_page < 50
+    # Annual reports for major companies are typically 100+ pages; < 20 pages is an anomaly (e.g. presentation)
+    is_suspicious_length = (report_type == "annual_report" and page_count < 20)
+
+    if is_scanned:
+        logger.error(
+            "AUDIT ALERT: %s has near-zero text (%d chars/page across %d pages) - likely scanned PDF without text layer!",
+            filepath.name, chars_per_page, page_count
+        )
+    elif is_suspicious_length:
+        logger.warning(
+            "AUDIT WARNING: %s has only %d pages for an annual report - check if it is the full report or a summary presentation!",
+            filepath.name, page_count
+        )
+
+    return {
+        "file": filepath.name,
+        "entity": entity,
+        "doc_type": doc_type,
+        "fiscal_year": fy,
+        "report_type": report_type,
+        "pages": page_count,
+        "total_chars": total_chars,
+        "chars_per_page": chars_per_page,
+        "is_scanned": is_scanned,
+        "is_suspicious_length": is_suspicious_length,
+    }
 
 
 def extract_pages(filepath: Path) -> Iterator[dict]:
@@ -233,10 +316,10 @@ def extract_pages(filepath: Path) -> Iterator[dict]:
     Yields one dict per page. Pages that are:
       - Entirely empty after cleaning
       - Vertical design text (cover page decoration)
-      - Too short to be meaningful (< 50 words)
+      - Too short to be meaningful (< 40 words)
     are silently skipped.
     """
-    doc_type, entity = infer_doc_type(filepath)
+    doc_type, entity, fiscal_year, report_type = infer_metadata(filepath)
 
     try:
         doc = fitz.open(filepath)
@@ -245,7 +328,7 @@ def extract_pages(filepath: Path) -> Iterator[dict]:
         return
 
     total_pages = len(doc)
-    logger.info(f"Processing {filepath.name} ({total_pages} pages, {doc_type}, {entity})")
+    logger.info(f"Processing {filepath.name} ({total_pages} pages, {doc_type}, {entity}, FY:{fiscal_year})")
 
     for page_idx in range(total_pages):
         page = doc[page_idx]
@@ -278,6 +361,8 @@ def extract_pages(filepath: Path) -> Iterator[dict]:
             "page_number": page_idx + 1,
             "doc_type":    doc_type,
             "company":     entity,
+            "fiscal_year": fiscal_year,
+            "report_type": report_type,
             "word_count":  word_count,
         }
 
@@ -287,9 +372,9 @@ def extract_pages(filepath: Path) -> Iterator[dict]:
 def load_all_documents(raw_dir: Path) -> list[dict]:
     """
     Load and clean every PDF in raw_dir and its subdirectories.
+    Includes content-hash deduplication and document audits.
 
     Returns a flat list of page dicts across all documents.
-    Prints a progress summary as it goes.
     """
     pdf_files = sorted(raw_dir.rglob("*.pdf"))
 
@@ -297,12 +382,27 @@ def load_all_documents(raw_dir: Path) -> list[dict]:
         raise FileNotFoundError(f"No PDFs found in {raw_dir}")
 
     print(f"Loading {len(pdf_files)} PDFs from {raw_dir}")
-    print("-" * 55)
+    print("-" * 65)
 
     all_pages = []
-    stats = {"files": 0, "pages_raw": 0, "pages_kept": 0, "skipped_files": 0}
+    seen_hashes: dict[str, str] = {}
+    stats = {
+        "files": 0,
+        "pages_raw": 0,
+        "pages_kept": 0,
+        "skipped_files": 0,
+        "duplicates_skipped": 0,
+    }
 
     for pdf_path in pdf_files:
+        file_hash = compute_file_hash(pdf_path)
+        if file_hash in seen_hashes:
+            stats["duplicates_skipped"] += 1
+            print(f"  SKIP DUP {pdf_path.name[:45]:<45} (same content as {seen_hashes[file_hash]})")
+            continue
+        seen_hashes[file_hash] = pdf_path.name
+
+        audit = audit_document(pdf_path)
         pages_before = len(all_pages)
 
         try:
@@ -312,28 +412,27 @@ def load_all_documents(raw_dir: Path) -> list[dict]:
             pages_extracted = len(all_pages) - pages_before
             stats["files"] += 1
             stats["pages_kept"] += pages_extracted
+            stats["pages_raw"] += audit["pages"]
 
-            # Quick per-file feedback — reuse already-open doc count via extract_pages
-            # to avoid opening the PDF a second time (Bug fix: was opening twice before)
-            doc = fitz.open(pdf_path)
-            raw_count = len(doc)
-            doc.close()
-            stats["pages_raw"] += raw_count
-
-            print(f"  OK  {pdf_path.name[:55]:<55} "
-                  f"{pages_extracted:>4} / {raw_count} pages kept")
+            flag = " [SCANNED ALERT]" if audit["is_scanned"] else (" [ODD LEN]" if audit["is_suspicious_length"] else "")
+            print(
+                f"  OK  {pdf_path.name[:42]:<42} "
+                f"{pages_extracted:>4} / {audit['pages']} pgs | "
+                f"{audit['chars_per_page']:>4} chars/pg{flag}"
+            )
 
         except Exception as e:
             logger.error(f"Failed: {pdf_path.name}: {e}")
             stats["skipped_files"] += 1
-            print(f"  ERR {pdf_path.name[:55]:<55} {e}")
+            print(f"  ERR {pdf_path.name[:42]:<42} {e}")
 
-    print("-" * 55)
-    print(f"Files processed : {stats['files']} / {len(pdf_files)}")
-    print(f"Pages raw       : {stats['pages_raw']}")
-    print(f"Pages kept      : {stats['pages_kept']} "
+    print("-" * 65)
+    print(f"Files processed    : {stats['files']} / {len(pdf_files)}")
+    print(f"Duplicates skipped : {stats['duplicates_skipped']}")
+    print(f"Pages raw          : {stats['pages_raw']}")
+    print(f"Pages kept         : {stats['pages_kept']} "
           f"({100*stats['pages_kept']//max(stats['pages_raw'],1)}% retention)")
-    print(f"Avg words/page  : "
+    print(f"Avg words/page     : "
           f"{sum(p['word_count'] for p in all_pages) // max(len(all_pages), 1)}")
 
     return all_pages

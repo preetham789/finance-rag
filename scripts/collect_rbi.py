@@ -19,7 +19,6 @@ from pathlib import Path
 
 import requests
 from bs4 import BeautifulSoup
-from tqdm import tqdm
 
 sys.path.append(str(Path(__file__).parent.parent))
 from src.config import RAW_DIR

@@ -1,0 +1,6 @@
+target-version = "py311"
+
+[lint]
+# Explicit so CI behaves the same on any ruff version: syntax errors,
+# undefined names, unused imports/variables, and common pitfalls.
+select = ["E4", "E7", "E9", "F"]

@@ -19,12 +19,10 @@ a broken source.
 
 import sys
 import time
-import re
 import webbrowser
 from pathlib import Path
 
 import requests
-from bs4 import BeautifulSoup
 
 sys.path.append(str(Path(__file__).parent.parent))
 from src.config import RAW_DIR
@@ -208,7 +206,7 @@ def open_ir_pages_in_browser(dest_dir: Path):
     print("Annual Report Download — Browser Guide")
     print("=" * 60)
     print()
-    print(f"Save ALL PDFs to this folder:")
+    print("Save ALL PDFs to this folder:")
     print(f"  {dest_dir}")
     print()
     print("For each company:")

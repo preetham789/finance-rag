@@ -10,19 +10,17 @@ Implements 3 strategies so you can compare them with RAGAS in Phase 5:
 Each strategy takes a list of page dicts (from loader.py) and returns
 a list of chunk dicts — same metadata fields, plus chunk-specific fields.
 
-Why keep metadata on every chunk?
-  When a user asks "What did HDFC Bank say about NPAs?", you want to
-  retrieve chunks tagged company="HDFC Bank" — not all 53 documents.
-  Metadata enables filtered retrieval, which is a key interview topic.
+New in this version:
+  • Contextual chunk headers: prepends [Company | Report | FY | Page] to chunk text
+  • Richer metadata: fiscal_year, report_type, chunk_type (prose / table)
 """
 
-import re
 import logging
+import re
 from typing import Literal
 
 from langchain.text_splitter import (
     RecursiveCharacterTextSplitter,
-    CharacterTextSplitter,
 )
 
 logger = logging.getLogger(__name__)
@@ -133,7 +131,7 @@ def make_sentence_chunks(text: str, max_sentences: int = 6,
         chunk_sentences = sentences[i: i + max_sentences]
         chunk_text = " ".join(chunk_sentences)
 
-        if len(chunk_text.split()) >= 20:  # skip tiny fragments
+        if len(chunk_text.split()) >= 5:  # skip only truly empty fragments
             chunks.append(chunk_text)
 
         # Advance by (max_sentences - overlap_sentences) to create overlap
@@ -147,16 +145,17 @@ def page_dicts_to_chunks(
     strategy: ChunkStrategy = "recursive",
     chunk_size: int = 512,
     chunk_overlap: int = 64,
+    add_contextual_header: bool = True,
 ) -> list[dict]:
     """
     Convert a list of page dicts into a list of chunk dicts.
 
     Each chunk dict contains:
-      text          — the chunk text
+      text          — the chunk text (prepended with contextual header if enabled)
       chunk_id      — unique identifier  e.g. "HDFC_AR_2024_p12_c3"
       strategy      — which chunking strategy produced this chunk
       chunk_index   — position of this chunk within its source page
-      + all metadata fields from the page dict (source_file, company, etc.)
+      + all metadata fields from the page dict (source_file, company, fiscal_year, report_type, etc.)
 
     This is the function you'll call from scripts/ingest.py.
     """
@@ -199,21 +198,36 @@ def page_dicts_to_chunks(
                 f"_{strategy[:3]}"
             )
 
+            chunk_type = "table" if "[TABLE DATA]" in chunk_text else "prose"
+            fiscal_year = page.get("fiscal_year", "2024")
+            report_type = page.get("report_type", page.get("doc_type", "report"))
+            company = page.get("company", "Unknown")
+            page_num = page.get("page_number", 1)
+
+            if add_contextual_header:
+                header = f"[{company} | {report_type.upper()} | {fiscal_year} | Page {page_num}]\n"
+                final_text = header + chunk_text
+            else:
+                final_text = chunk_text
+
             all_chunks.append({
                 # ── Text ──
-                "text":         chunk_text,
-                "word_count":   len(chunk_text.split()),
+                "text":         final_text,
+                "word_count":   len(final_text.split()),
 
                 # ── Identity ──
                 "chunk_id":     chunk_id,
                 "strategy":     strategy,
                 "chunk_index":  chunk_idx,
+                "chunk_type":   chunk_type,
 
                 # ── Source metadata (inherited from page) ──
                 "source_file":  page["source_file"],
                 "page_number":  page["page_number"],
                 "doc_type":     page["doc_type"],
-                "company":      page["company"],
+                "company":      company,
+                "fiscal_year":  fiscal_year,
+                "report_type":  report_type,
             })
 
     return all_chunks
