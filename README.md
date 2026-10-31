@@ -520,7 +520,7 @@ All settings are loaded from environment variables via `src/config.py` (Pydantic
 
 ## 📄 License
 
-MIT License — see [LICENSE](./LICENSE) for details.
+MIT License — see  [LICENSE](./LICENSE) for details.
 
 Designed for financial research, educational purposes, and production RAG reference implementations.
 

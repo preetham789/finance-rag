@@ -1,8 +1,27 @@
 import json
+import socket
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
+
+
+def _loopback_available() -> bool:
+    """Return True if we can open a TCP connection to 127.0.0.1 on an ephemeral port."""
+    try:
+        with socket.create_server(("127.0.0.1", 0)) as srv:
+            host, port = srv.getsockname()
+        with socket.create_connection((host, port), timeout=1):
+            pass
+    except OSError:
+        return False
+    return True
+
+
+requires_loopback = pytest.mark.skipif(
+    not _loopback_available(),
+    reason="loopback TCP not available in this environment (WinError 10013 / sandbox)",
+)
 
 
 class MockAPI(BaseHTTPRequestHandler):
@@ -74,6 +93,7 @@ ROWS = [
 ]
 
 
+@requires_loopback
 def test_scoring_end_to_end(eval_api, base_url):
     scored, skipped = eval_api.run_eval(base_url, ROWS, retries=0)
     agg = eval_api.aggregate(scored)
@@ -96,6 +116,7 @@ def test_page_tolerance_and_wrong_page(eval_api):
     assert eval_api.first_hit_rank(srcs, [{"company": "TCS", "pages": [113]}]) is None
 
 
+@requires_loopback
 def test_http_error_becomes_error_row_not_a_crash(eval_api, base_url):
     row = {"id": "err", "category": "x", "question": "unknown thing",
            "expect": {"contains_all": ["x"]}}
@@ -105,6 +126,7 @@ def test_http_error_becomes_error_row_not_a_crash(eval_api, base_url):
     assert agg["errors"] == 1 and agg["answer_ok_rate"] is None
 
 
+@requires_loopback
 def test_skip_rows_are_not_scored(eval_api, base_url):
     rows = [{**ROWS[0], "skip": True}, ROWS[1]]
     scored, skipped = eval_api.run_eval(base_url, rows, retries=0)
@@ -124,6 +146,7 @@ def test_compare_gate(eval_api, tmp_path):
     assert eval_api.compare(a, worse, 0.03) == 1
 
 
+@requires_loopback
 def test_bench_run_level(bench, base_url):
     res = bench.run_level(base_url, ["how many employees?"], n=6, concurrency=2)
     assert res["ok"] == 6 and not res["errors"]
